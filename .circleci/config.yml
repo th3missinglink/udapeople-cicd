@@ -12,26 +12,27 @@ commands:
               sudo ./aws/install
 
     install_nodejs:
-      description: Install Node.js 13.8.0
+      description: Install Node.js 13
       steps:
         - run:
-            name: Install Node.js 13.8.0
+            name: Install Node.js 13
             command: |
-              # Install Node.js LTS version as our base Node.js version
-              curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+              curl -fsSL https://deb.nodesource.com/setup_13.x | sudo -E bash -
               sudo apt install -y nodejs
 
-              # Use n version manager to use Node.js v13.8.0
-              sudo npm install --global n
-              sudo n 13.8.0
 
     install_ansible:
-      description: Install Ansible v2
+      description: Install Ansible
       steps:
         - run:
-            name: Install Ansible v2
+            name: Install Ansible
             command: |
-              python3 -m pip install --user ansible
+              sudo apt update
+              sudo apt install software-properties-common -y
+              sudo add-apt-repository --yes --update ppa:ansible/ansible
+              sudo apt instal ansible -y
+
+              # python3 -m pip install --user ansible
 
     destroy-environment:
       description: Destroy back-end and front-end cloudformation stacks given a workflow ID.
@@ -173,7 +174,7 @@ jobs:
 
   deploy-infrastructure:
     docker:
-      - image: cimg/node:13.8.0
+      - image: cimg/python:3.10
     steps:
       - checkout
       - install_awscli
@@ -212,7 +213,7 @@ jobs:
 
   configure-infrastructure:
     docker:
-    - image: cimg/node:13.8.0
+    - image: cimg/python:3.10
     steps:
     - checkout
     - install_ansible
