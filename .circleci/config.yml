@@ -174,18 +174,10 @@ jobs:
 
   deploy-infrastructure:
     docker:
-      - image: cimg/python:3.10
+      - image: cimg/base:stable
     steps:
       - checkout
       - install_awscli
-      - run:
-          name: Ensure backend infrastructure exists
-          command: |
-            aws cloudformation deploy \
-              --template-file .circleci/files/backend.yml \
-              --tags project=udapeople \
-              --stack-name "udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
-              --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"
       - run:
           name: Ensure frontend infrastructure exist
           command: |
@@ -194,6 +186,15 @@ jobs:
               --tags project=udapeople \
               --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}" \
               --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}" 
+      - run:
+          name: Ensure backend infrastructure exists
+          command: |
+            aws cloudformation deploy \
+              --template-file .circleci/files/backend.yml \
+              --tags project=udapeople \
+              --stack-name "udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
+              --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"
+
       - run:
           name: Add backend ip to ansible inventory
           command: |
@@ -211,24 +212,24 @@ jobs:
 
       - destroy-environment  
 
-  configure-infrastructure:
-    docker:
-    - image: cimg/python:3.10
-    steps:
-    - checkout
-    - install_ansible
-    - install_awscli
-    - add_ssh_keys:
-       fingerprints: ["fc:49:96:4b:b8:40:0d:d7:a1:b3:99:a5:de:ea:75:39"]
-    - attach_workspace:
-        at: ~/
-    - run:
-       name: Run Configure Server Ansible play
-       command: |
-        cd .circleci/ansible
-        cat inventory.txt
-        ansible-playbook -i inventory.txt configure-server.yml
-    - destroy-environment   
+  # configure-infrastructure:
+  #   docker:
+  #   - image: cimg/python:3.10
+  #   steps:
+  #   - checkout
+  #   - install_ansible
+  #   - install_awscli
+  #   - add_ssh_keys:
+  #      fingerprints: ["fc:49:96:4b:b8:40:0d:d7:a1:b3:99:a5:de:ea:75:39"]
+  #   - attach_workspace:
+  #       at: ~/
+  #   - run:
+  #      name: Run Configure Server Ansible play
+  #      command: |
+  #       cd .circleci/ansible
+  #       cat inventory.txt
+  #       ansible-playbook -i inventory.txt configure-server.yml
+  #   - destroy-environment   
 
   # run-migrations:
   #   docker:
@@ -361,8 +362,8 @@ workflows:
           filters:
             branches:
               only: [master]
-      - configure-infrastructure:
-          requires: [deploy-infrastructure]
+      # - configure-infrastructure:
+      #     requires: [deploy-infrastructure]
       # - run-migrations:
       #     requires: [configure-infrastructure]
       # - deploy-frontend:
