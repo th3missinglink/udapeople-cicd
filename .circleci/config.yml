@@ -12,22 +12,28 @@ commands:
               sudo ./aws/install
 
     install_nodejs:
-      description: Install Node.js 13
+      description: Install Node.js 13.8.0
       steps:
         - run:
-            name: Install Node.js 13
+            name: Install Node.js 13.8.0
             command: |
-              curl -fsSL https://deb.nodesource.com/setup_13.x | sudo -E bash -
+              # Install Node.js LTS version as our base Node.js version
+              curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
               sudo apt install -y nodejs
 
+              # Use n version manager to use Node.js v13.8.0
+              sudo npm install --global n
+              sudo n 13.8.0
 
     install_ansible:
-      description: Install Ansible
+      description: Install Ansible v2
       steps:
         - run:
-            name: Install Ansible
+            name: Install Ansible v2
             command: |
-              python3 -m pip install --user ansible
+              sudo apt update
+              sudo apt install software-properties-common
+              sudo add-apt-repository --yes --update ppa:ansible/ansible
 
     destroy-environment:
       description: Destroy back-end and front-end cloudformation stacks given a workflow ID.
@@ -49,25 +55,24 @@ commands:
               # Delete backend stack
               aws cloudformation delete-stack --stack-name udapeople-backend-<< parameters.Workflow_ID >>
 
-    # revert-migrations:
-    #   description: Revert the last migration, if any were executed during the current workflow
-    #   parameters:
-    #     Workflow_ID:
-    #       type: string
-    #       default: ${CIRCLE_WORKFLOW_ID:0:7}
-    #   steps:
-    #     - run:
-    #         name: Revert migrations
-    #         when: on_fail
-    #         command: |
-    #           SUCCESS=$(curl --insecure  https://kvdb.io/${KVDB_BUCKET}/migration_<< parameters.Workflow_ID >>)
-    #           # Logic for reverting the database state
-    #           if (( $SUCCESS == 1 ));
-    #           then
-    #             cd ~/project/backend
-    #             npm install
-    #             npm run migration:revert
-    #           fi
+#   revert-migrations:
+#     description: Revert the last migration if successfully run in the current workflow.
+#     parameters:
+#       # Add parameter here     
+#     steps:
+#       - run:
+#           name: Revert migrations
+#           # Add when this will run
+#           command: |
+#             # Curl command here to see if there was a successful migration associated with the workflow id, store result in SUCCESS variable
+#             SUCCESS = 1
+#             if(( $SUCCESS==1 )); 
+#             then
+#             #  cd ~/project/backend
+#             #  npm install
+#             #  Add revert code here. You can find this in the Getting Started section.
+#               exit 1
+#             fi
             
 jobs:
   build-frontend:
@@ -169,12 +174,12 @@ jobs:
 
   deploy-infrastructure:
     docker:
-      - image: cimg/node:13.8.0
+      - image: cimg/python:3.10
     steps:
       - checkout
       - install_awscli
       - run:
-          name: Ensure backend infrastructure exist
+          name: Ensure backend infrastructure exists
           command: |
             aws cloudformation deploy \
               --template-file .circleci/files/backend.yml \
@@ -185,12 +190,12 @@ jobs:
           name: Ensure frontend infrastructure exist
           command: |
             aws cloudformation deploy \
-            --template-file .circleci/files/frontend.yml \
-            --tags project=udapeople \
-            --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}" \
-            --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"
+              --template-file .circleci/files/frontend.yml \
+              --tags project=udapeople \
+              --stack-name "udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}" \
+              --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}" 
       - run:
-          name: Add back-end ip to ansible inventory
+          name: Add backend ip to ansible inventory
           command: |
             BACKEND_PUBLIC_IP=$(aws ec2 describe-instances \
               --filters "Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" \
@@ -198,10 +203,13 @@ jobs:
               --output text)
             echo $BACKEND_PUBLIC_IP >> .circleci/ansible/inventory.txt
             cat .circleci/ansible/inventory.txt
+
       - persist_to_workspace:
           root: ~/
           paths:
             - project/.circleci/ansible/inventory.txt
+
+      - destroy-environment  
 
   configure-infrastructure:
     docker:
@@ -222,58 +230,43 @@ jobs:
         ansible-playbook -i inventory.txt configure-server.yml
     - destroy-environment   
 
-  # run-migrations:
-  #   docker:
-  #     - image: cimg/python:3.10
-  #   steps:
-  #     - checkout
-  #     - install_awscli
-  #     - run:
-  #         name: Run migrations
-  #         command: |
-  #           cd backend
-  #           npm install
-  #           npm run migrations > migrations_dump.txt
-  #     - run:
-  #         name: Send migration status to kvdb.io
-  #         command: |
-  #           if grep -q "has been executed successfully." ~/project/backend/migrations_dump.txt
-  #           then
-  #             curl https://kvdb.io/${KVDB_BUCKET}/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
-  #           fi
-  #     - destroy-environment
-  #     - revert-migrations
+  run-migrations:
+    docker:
+      # Docker image here that supports NodeJS
+    steps:
+      # Checkout code from git
+      - run:
+          name: Run migrations
+          command: |
+            # Your code here
+            exit 1
+      - run:
+          name: Send migration results to memstash
+          command: |
+            # Your code here
+            exit 1
+     # Here's where you will add some code to rollback on failure      
 
-  # deploy-frontend:
-  #   docker:
-  #     - image: cimg/python:3.10
-  #   steps:
-  #     - checkout
-  #     - install_awscli
-  #     - install_nodejs
-  #     - run:
-  #         name: Install dependencies
-  #         command: |
-  #           cd frontend
-  #           npm install
-  #     - run:
-  #         name: Get backend url
-  #         command: |
-  #           BACKEND_PUBLIC_IP=$(aws ec2 describe-instances \
-  #             --filters "Name=tag:Name,Values=backend-${CIRCLE_WORKFLOW_ID:0:7}" \
-  #             --query 'Reservations[*].Instances[*].PublicIpAddress' \
-  #             --output text)
-
-  #           echo "API_URL=http://${BACKEND_PUBLIC_IP}:3030" >> frontend/.env
-  #           cat frontend/.env
-  #     - run:
-  #         name: Deploy frontend objects
-  #         command: |
-  #           cd frontend
-  #           npm run build
-  #           aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
-  #     - destroy-environment
-  #     - revert-migrations
+#   deploy-frontend:
+#     docker:
+#       # Docker image here that supports AWS CLI
+#     steps:
+#       # Checkout code from git
+#       - run:
+#           name: Install dependencies
+#           command: |
+#             # your code here
+#       - run:
+#           name: Get backend url
+#           command: |
+#             # your code here
+#             export API_URL="http://${BACKEND_IP}:3030"
+#             echo "${API_URL}"
+#       - run:
+#           name: Deploy frontend objects
+#           command: |
+#             # your code here
+#       # Here's where you will add some code to rollback on failure      
                     
 #   deploy-backend:
 #     docker:
