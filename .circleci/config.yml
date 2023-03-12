@@ -18,7 +18,7 @@ commands:
           name: Install Node.js 13.8.0
           command: |
             # Install Node.js LTS version as our base Node.js version
-            curl -fsSL https://deb.nodesource.com/setup_13.x | sudo -E bash -
+            curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
             sudo apt install -y nodejs
 
             # Use n version manager to use Node.js v13.8.0
@@ -231,11 +231,10 @@ jobs:
 
   run-migrations:
     docker:
-      - image: cimg/python:3.10
+      - image: cimg/node:13.8.0
     steps:
       - checkout
       - install_awscli
-      - install_nodejs
       - restore_cache:
           keys: [backend-deps]
       - run:
