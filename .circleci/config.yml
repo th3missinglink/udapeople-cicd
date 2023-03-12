@@ -236,8 +236,6 @@ jobs:
       - checkout
       - install_awscli
       - install_nodejs
-      - restore_cache:
-          keys: [backend-deps]
       - run:
           name: Run migrations
           command: |
