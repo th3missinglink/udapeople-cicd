@@ -10,19 +10,19 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: !Sub UdaPeople-${ID}
-      GroupDescription: Allow port 22 and port 3030.
+      GroupDescription: Allow port 22, 9100 and port 3030.
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
-          FromPort: 3030
-          ToPort: 3030
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
           FromPort: 9100
           ToPort: 9100
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 3030
+          ToPort: 3030
           CidrIp: 0.0.0.0/0
 
   EC2Instance:
@@ -31,8 +31,10 @@ Resources:
       InstanceType: t2.micro
       SecurityGroups:
         - Ref: InstanceSecurityGroup
-      KeyName: udacity
+      KeyName: udacityWin
       ImageId: ami-0735c191cf914754d
       Tags:
         - Key: Name
           Value: !Sub backend-${ID}
+
+          
