@@ -357,10 +357,10 @@ jobs:
             if curl -s $FRONTEND_WEBSITE_URL | grep "Welcome"
             then
               echo "Frontend is up and running"
-              exit 0
+              exit 1
             else
               echo "Frontend is down"
-              exit 1
+              exit 2
             fi
       - destroy-environment
       - revert-migrations
