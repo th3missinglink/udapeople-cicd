@@ -322,8 +322,8 @@ jobs:
             cd .circleci/ansible
             cat inventory.txt
             ansible-playbook -i inventory.txt deploy-backend.yml
-      # - destroy-environment
-      # - revert-migrations
+      - destroy-environment
+      - revert-migrations
 
   smoke-test:
     docker:
@@ -347,6 +347,7 @@ jobs:
               else
                 echo "Backend is down"
                 exit 1
+                
               fi
       - run:
           name: Frontend smoke test.
@@ -356,10 +357,10 @@ jobs:
             if curl -s $FRONTEND_WEBSITE_URL | grep "Welcome"
             then
               echo "Frontend is up and running"
-              exit 1
+              exit 0
             else
               echo "Frontend is down"
-              exit 2
+              exit 1
             fi
       - destroy-environment
       - revert-migrations
