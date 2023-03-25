@@ -1,6 +1,21 @@
 version: 2.1
 
+orbs: 
+    slack: circleci/slack@4.10.1
+
+
+
+
+
 commands:
+
+  notify_on_failure:
+      steps:
+      - slack/notify:
+          event: fail
+          channel: udapeople
+          template: basic_fail_1
+
   install_awscli:
     description: Install AWS CLI v2
     steps:
@@ -90,6 +105,7 @@ jobs:
       - save_cache:
           paths: [frontend/node_modules]
           key: frontend-deps
+      - notify_on_failure
 
   build-backend:
     docker:
@@ -107,6 +123,7 @@ jobs:
       - save_cache:
           paths: [backend/node_modules]
           key: backend-deps
+      - notify_on_failure
 
   test-frontend:
     docker:
@@ -121,6 +138,7 @@ jobs:
             cd frontend
             npm install
             npm test
+      - notify_on_failure
 
   test-backend:
     docker:
@@ -138,6 +156,7 @@ jobs:
       - save_cache:
           paths: [backend/node_modules]
           key: backend-deps
+      - notify_on_failure
             
   scan-frontend:
     docker:
@@ -154,6 +173,7 @@ jobs:
             npm audit fix --force --audit-level=critical
             npm audit fix --force --audit-level=critical
             npm audit --audit-level=critical
+      - notify_on_failure
 
   scan-backend:
     docker:
@@ -170,6 +190,7 @@ jobs:
             npm audit fix --force --audit-level=critical
             npm audit fix --force --audit-level=critical
             npm audit --audit-level=critical
+      - notify_on_failure
 
   deploy-infrastructure:
     docker:
@@ -391,29 +412,39 @@ jobs:
       - revert-migrations  
 
   cleanup:
-      docker:
-        - image: cimg/python:3.10
-      steps:
-        - checkout
-        - install_awscli
-        - install_nodejs
-        - run:
-            name: Remove old stacks and files
-            command: |
-              export STACKS=($(aws cloudformation list-stacks \
-                              --query "StackSummaries[*].StackName" \
-                              --stack-status-filter CREATE_COMPLETE --no-paginate --output text))
-              echo Stack names: "${STACKS[@]}"
+    docker:
+      - image: cimg/python:3.10
+    steps:
+      - checkout
+      - install_awscli
+      - install_nodejs
+      - run:
+          name: Remove old stacks and files
+          command: |
+            export STACKS=($(aws cloudformation list-stacks \
+                            --query "StackSummaries[*].StackName" \
+                            --stack-status-filter CREATE_COMPLETE --no-paginate --output text))
+            echo Stack names: "${STACKS[@]}"
 
-              export OldWorkflowID=$(curl --insecure https://kvdb.io/${KVDB_BUCKET}/old_workflow_id)
-              echo Old Workflow ID: $OldWorkflowID
+            export OldWorkflowID=$(curl --insecure https://kvdb.io/${KVDB_BUCKET}/old_workflow_id)
+            echo Old Workflow ID: $OldWorkflowID
 
-              if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
-              then
-                  aws s3 rm "s3://udapeople-${OldWorkflowID}" --recursive
-                  aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
-                  aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
-              fi
+            if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
+            then
+                aws s3 rm "s3://udapeople-${OldWorkflowID}" --recursive
+                aws cloudformation delete-stack --stack-name "udapeople-backend-${OldWorkflowID}"
+                aws cloudformation delete-stack --stack-name "udapeople-frontend-${OldWorkflowID}"
+            fi
+
+
+  notify_on_success:
+    docker:
+    - image: cimg/base:stable
+    steps:
+    - slack/notify:
+        event: pass
+        channel: udapeople
+        template: success_tagged_deployment_1
 
 workflows:
   default:
@@ -428,6 +459,12 @@ workflows:
           requires: [build-backend]
       - scan-frontend:
           requires: [build-frontend]
+      - notify_on_success:
+          reqiures:
+            - test-frontend
+            - test-backend
+            - scan-frontend
+            - scan-backend
       - deploy-infrastructure:
           requires: [test-frontend, test-backend, scan-frontend, scan-backend]
           filters:
